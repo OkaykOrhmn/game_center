@@ -4,31 +4,62 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:game_center/game_model.dart';
-import 'package:game_center/theme.dart';
+import 'package:game_center/model/game.dart';
+import 'package:game_center/setting_page.dart';
 import 'package:game_center/utils/empty_space.dart';
 import 'package:game_center/utils/my_custom_scroll_behavior.dart';
+import 'package:hive_flutter/adapters.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:game_center/bloc/game_bloc.dart';
+import 'package:window_manager/window_manager.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  Hive.registerAdapter(GameAdapter());
+  final gameBox = await Hive.openBox<Game>('games');
+
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = WindowOptions(
+      fullScreen: false,
+      windowButtonVisibility: true,
+      center: false,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+      size: Size(800, 600));
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager
+        .setMinimumSize(const Size(800, 600)); // Set minimum size
+    await windowManager.show();
+    await windowManager.focus();
+  });
+  runApp(MyApp(gameBox: gameBox));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Box<Game> gameBox;
+  const MyApp({super.key, required this.gameBox});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      themeMode: ThemeMode.dark,
-      // darkTheme: AppTheme.dark,
-      // theme: AppTheme.light,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      home: const MyHomePage(),
-      scrollBehavior: MyCustomScrollBehavior(),
-      debugShowCheckedModeBanner: false,
+    return BlocProvider(
+      create: (context) => GameBloc(gameBox)..add(LoadGames()),
+      child: MaterialApp(
+        title: 'Flutter Demo',
+        themeMode: ThemeMode.dark,
+        // darkTheme: AppTheme.dark,
+        // theme: AppTheme.light,
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark().copyWith(
+          surface: Colors.grey[900],
+        )),
+        home: const MyHomePage(),
+        scrollBehavior: MyCustomScrollBehavior(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
@@ -94,7 +125,11 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: Icon(Icons.menu),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).push(CupertinoPageRoute(
+              builder: (context) => SettingPage(),
+            ));
+          },
         ),
         title: Padding(
           padding: const EdgeInsets.all(8.0),

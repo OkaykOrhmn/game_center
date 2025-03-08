@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 ///   theme: AppTheme.light,
 ///   darkTheme: AppTheme.dark,
 /// );
-abstract final class AppTheme {
+class AppTheme {
   // The defined light theme.
   static ThemeData light = FlexThemeData.light(
     scheme: FlexScheme.blueM3,
