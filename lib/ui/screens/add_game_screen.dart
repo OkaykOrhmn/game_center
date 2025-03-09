@@ -61,6 +61,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
                         print(file?.path);
                       }
                       path.text = file?.path ?? '';
+                      name.text = file?.name.replaceAll('.exe', '') ?? '';
                     },
                     icon: Icon(Icons.search_rounded),
                   ),
@@ -153,14 +154,20 @@ class _AddGameScreenState extends State<AddGameScreen> {
                         if (!_createFormState.currentState!.validate()) {
                           return;
                         }
-                        selectedCoverArt ??=
-                            await ImageFinddServices.downloadAndSaveImage(
-                                'https://picsum.photos/1500/2000',
-                                name: name.text);
-                        selectedBackArt ??=
-                            await ImageFinddServices.downloadAndSaveImage(
-                                'https://picsum.photos/2000/1125',
-                                name: name.text);
+                        // selectedCoverArt ??=
+                        //     await ImageFinddServices.downloadAndSaveImage(
+                        //         'https://picsum.photos/1500/2000',
+                        //         name: name.text);
+                        // selectedBackArt ??=
+                        //     await ImageFinddServices.downloadAndSaveImage(
+                        //         'https://picsum.photos/2000/1125',
+                        //         name: name.text);
+                        if (cover.text.isEmpty) {
+                          cover.text = 'https://picsum.photos/1500/2000';
+                        }
+                        if (backCover.text.isEmpty) {
+                          backCover.text = 'https://picsum.photos/2000/1125';
+                        }
                         if (desc.text.isEmpty) {
                           final response = await AiService.getResponse(
                               'find a good and interesting Description for Game ${name.text} minimum 6 line and be usefull and just send me the Description not anything else');
@@ -171,8 +178,8 @@ class _AddGameScreenState extends State<AddGameScreen> {
                         }
                         context.read<GameBloc>().add(AddGame(Game(
                             title: name.text,
-                            image: selectedCoverArt?.path ?? '',
-                            backgroundImage: selectedBackArt?.path ?? '',
+                            image: cover.text,
+                            backgroundImage: backCover.text,
                             exePath: path.text,
                             description: desc.text)));
                       },

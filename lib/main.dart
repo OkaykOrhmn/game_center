@@ -26,14 +26,15 @@ void main() async {
   WindowOptions windowOptions = WindowOptions(
     fullScreen: false,
     windowButtonVisibility: true,
+    alwaysOnTop: false,
+    title: 'Game Center',
     center: false,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager
-        .setMinimumSize(const Size(800, 600)); // Set minimum size
+    await windowManager.setMinimumSize(Size(800, 600));
     await windowManager.show();
     await windowManager.focus();
   });
@@ -206,8 +207,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               return FadeTransition(
                                   opacity: animation, child: child);
                             },
-                            child: Image.file(
-                              File(state.games[index].backgroundImage),
+                            child: Image.network(
+                              state.games[index].backgroundImage,
                               width: double.infinity,
                               height: double.infinity,
                               key: ValueKey<int>(index),
@@ -239,10 +240,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                       8), // Add some space between title and description
                               ConstrainedBox(
                                 constraints: BoxConstraints(
+                                    maxHeight:
+                                        MediaQuery.sizeOf(context).height * 0.8,
                                     maxWidth:
                                         MediaQuery.sizeOf(context).width * 0.5),
                                 child: Text(
                                   state.games[sIndex].description,
+                                  overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                               ),
@@ -305,8 +309,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                                   child: Text('Hi'),
                                                 )
                                               ],
-                                              child: Image.file(
-                                                File(state.games[index].image),
+                                              child: Image.network(
+                                                state.games[index].image,
                                                 fit: BoxFit.cover,
                                                 color: sIndex != index
                                                     ? Colors.black
