@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:game_center/model/game.dart';
+import 'package:game_center/data/model/game.dart';
 import 'package:hive/hive.dart';
 
 class GameEvent {}

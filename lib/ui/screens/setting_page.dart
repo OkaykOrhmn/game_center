@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:game_center/manage_customes_page.dart';
-import 'package:game_center/utils/empty_space.dart';
+import 'package:game_center/ui/screens/manage_customes_page.dart';
+import 'package:game_center/core/utils/empty_space.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -11,7 +11,7 @@ class SettingPage extends StatefulWidget {
 }
 
 class _SettingPageState extends State<SettingPage> {
-  bool expande_one = false;
+  bool expandeOne = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,7 +25,7 @@ class _SettingPageState extends State<SettingPage> {
             ExpansionPanelList(
               expansionCallback: (int index, bool isExpanded) {
                 setState(() {
-                  expande_one = !expande_one;
+                  expandeOne = !expandeOne;
                 });
               },
               elevation: 8,
@@ -33,7 +33,7 @@ class _SettingPageState extends State<SettingPage> {
                 ExpansionPanel(
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     canTapOnHeader: true,
-                    isExpanded: expande_one,
+                    isExpanded: expandeOne,
                     headerBuilder: (context, isExpanded) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: ListTile(

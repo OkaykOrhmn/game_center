@@ -1,13 +1,15 @@
-import 'dart:ui';
+import 'dart:io';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:game_center/model/game.dart';
-import 'package:game_center/setting_page.dart';
-import 'package:game_center/utils/empty_space.dart';
-import 'package:game_center/utils/my_custom_scroll_behavior.dart';
+import 'package:game_center/data/model/game.dart';
+import 'package:game_center/services/ai_service.dart';
+import 'package:game_center/ui/screens/setting_page.dart';
+import 'package:game_center/core/utils/empty_space.dart';
+import 'package:game_center/core/utils/my_custom_scroll_behavior.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_center/bloc/game_bloc.dart';
@@ -17,24 +19,33 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(GameAdapter());
-  final gameBox = await Hive.openBox<Game>('games');
+  final gameBox = await Hive.openBox<Game>('state.games');
 
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = WindowOptions(
-      fullScreen: false,
-      windowButtonVisibility: true,
-      center: false,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.normal,
-      size: Size(800, 600));
+    fullScreen: false,
+    windowButtonVisibility: true,
+    center: false,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.normal,
+  );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager
         .setMinimumSize(const Size(800, 600)); // Set minimum size
     await windowManager.show();
     await windowManager.focus();
   });
+
+  try {
+    AiService.initial();
+  } catch (e) {
+    if (kDebugMode) {
+      print("Error in load Ai: $e");
+    }
+  }
+
   runApp(MyApp(gameBox: gameBox));
 }
 
@@ -143,7 +154,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _focusNode.requestFocus();
               },
               textInputAction: TextInputAction.search,
-              hintText: 'Search for games...',
+              hintText: 'Search for state.games...',
               leading: Icon(Icons.search),
               side: WidgetStatePropertyAll(
                   BorderSide(color: Theme.of(context).colorScheme.onSurface)),
@@ -179,153 +190,191 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          Positioned.fill(
-              child: ValueListenableBuilder(
-                  valueListenable: selectedIndex,
-                  builder: (context, index, _) {
-                    return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 500),
-                        transitionBuilder:
-                            (Widget child, Animation<double> animation) {
-                          return FadeTransition(
-                              opacity: animation, child: child);
-                        },
-                        child: Image.network(
-                          games[index].backgroundImage,
-                          width: double.infinity,
-                          height: double.infinity,
-                          key: ValueKey<int>(index),
-                          fit: BoxFit.cover,
-                          opacity: AlwaysStoppedAnimation(0.5),
-                        ));
-                  })),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.end,
+      body: BlocBuilder<GameBloc, GameState>(
+        builder: (context, state) {
+          if (state.games.isEmpty) return SizedBox.shrink();
+          return Stack(
             children: [
-              ValueListenableBuilder(
-                  valueListenable: selectedIndex,
-                  builder: (context, sIndex, _) {
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            games[sIndex].title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
+              Positioned.fill(
+                  child: ValueListenableBuilder(
+                      valueListenable: selectedIndex,
+                      builder: (context, index, _) {
+                        return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 500),
+                            transitionBuilder:
+                                (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                  opacity: animation, child: child);
+                            },
+                            child: Image.file(
+                              File(state.games[index].backgroundImage),
+                              width: double.infinity,
+                              height: double.infinity,
+                              key: ValueKey<int>(index),
+                              fit: BoxFit.cover,
+                              opacity: AlwaysStoppedAnimation(0.5),
+                            ));
+                      })),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ValueListenableBuilder(
+                      valueListenable: selectedIndex,
+                      builder: (context, sIndex, _) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                state.games[sIndex].title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(
+                                  height:
+                                      8), // Add some space between title and description
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.sizeOf(context).width * 0.5),
+                                child: Text(
+                                  state.games[sIndex].description,
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(
-                              height:
-                                  8), // Add some space between title and description
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.sizeOf(context).width * 0.5),
-                            child: Text(
-                              games[sIndex].description,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-              12.h,
-              Focus(
-                focusNode: _focusNode,
-                autofocus: true,
-                onKeyEvent: (FocusNode node, KeyEvent event) {
-                  if (event is KeyDownEvent) {
-                    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                      _carouselController.previousPage();
-                      return KeyEventResult.handled;
-                    } else if (event.logicalKey ==
-                        LogicalKeyboardKey.arrowRight) {
-                      _carouselController.nextPage();
-                      return KeyEventResult.handled;
-                    }
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: CarouselSlider.builder(
-                    carouselController: _carouselController,
-                    itemCount: games.length,
-                    itemBuilder: (context, index, realIndex) {
-                      return GestureDetector(
-                        onSecondaryTapDown: (details) {
-                          _showContextMenu(
-                              context, details.globalPosition, index);
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: AspectRatio(
-                            aspectRatio: 3 / 4,
-                            child: ValueListenableBuilder(
-                                valueListenable: selectedIndex,
-                                builder: (context, sIndex, _) {
-                                  return Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: CupertinoContextMenu(
-                                          actions: [
-                                            CupertinoContextMenuAction(
-                                              child: Text('Hi'),
-                                            )
-                                          ],
-                                          child: Image.network(
-                                            games[index].image,
-                                            fit: BoxFit.cover,
-                                            color: sIndex != index
-                                                ? Colors.black.withAlpha(180)
-                                                : null,
-                                            colorBlendMode: BlendMode.multiply,
-                                          ),
-                                        ),
-                                      ),
-                                      if (sIndex == index)
-                                        Positioned(
-                                          right: 16,
-                                          bottom: 16,
-                                          child: ElevatedButton.icon(
-                                              style: ElevatedButton.styleFrom(
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8))),
-                                              onPressed: () {},
-                                              icon: Icon(Icons.gamepad_rounded),
-                                              label: Text("Play")),
-                                        )
-                                    ],
-                                  );
-                                }),
-                          ),
-                        ),
-                      );
+                        );
+                      }),
+                  12.h,
+                  Focus(
+                    focusNode: _focusNode,
+                    autofocus: true,
+                    onKeyEvent: (FocusNode node, KeyEvent event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                          _carouselController.previousPage();
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey ==
+                            LogicalKeyboardKey.arrowRight) {
+                          _carouselController.nextPage();
+                          return KeyEventResult.handled;
+                        }
+                        if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          if (state.games[selectedIndex.value].exePath
+                              .replaceAll(' ', '')
+                              .isNotEmpty) {
+                            Process.run(
+                                state.games[selectedIndex.value].exePath,
+                                []).then((ProcessResult results) {
+                              // print(results.stdout);
+                              // print(results.stderr);
+                            });
+                          }
+                        }
+                      }
+
+                      return KeyEventResult.ignored;
                     },
-                    options: CarouselOptions(
-                        onPageChanged: (index, reason) {
-                          selectedIndex.value = index;
+                    child: CarouselSlider.builder(
+                        carouselController: _carouselController,
+                        itemCount: state.games.length,
+                        itemBuilder: (context, index, realIndex) {
+                          return GestureDetector(
+                            onSecondaryTapDown: (details) {
+                              _showContextMenu(
+                                  context, details.globalPosition, index);
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: AspectRatio(
+                                aspectRatio: 3 / 4,
+                                child: ValueListenableBuilder(
+                                    valueListenable: selectedIndex,
+                                    builder: (context, sIndex, _) {
+                                      return Stack(
+                                        children: [
+                                          Positioned.fill(
+                                            child: CupertinoContextMenu(
+                                              actions: [
+                                                CupertinoContextMenuAction(
+                                                  child: Text('Hi'),
+                                                )
+                                              ],
+                                              child: Image.file(
+                                                File(state.games[index].image),
+                                                fit: BoxFit.cover,
+                                                color: sIndex != index
+                                                    ? Colors.black
+                                                        .withAlpha(180)
+                                                    : null,
+                                                colorBlendMode:
+                                                    BlendMode.multiply,
+                                              ),
+                                            ),
+                                          ),
+                                          if (sIndex == index)
+                                            Positioned(
+                                              right: 16,
+                                              bottom: 16,
+                                              child: ElevatedButton.icon(
+                                                  style: ElevatedButton.styleFrom(
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8))),
+                                                  onPressed: () {
+                                                    if (state
+                                                        .games[index].exePath
+                                                        .replaceAll(' ', '')
+                                                        .isNotEmpty) {
+                                                      Process.run(
+                                                              state.games[index]
+                                                                  .exePath,
+                                                              [])
+                                                          .then((ProcessResult
+                                                              results) {
+                                                        // print(results.stdout);
+                                                        // print(results.stderr);
+                                                      });
+                                                    }
+                                                  },
+                                                  icon: Icon(
+                                                      Icons.gamepad_rounded),
+                                                  label: Text("Play")),
+                                            )
+                                        ],
+                                      );
+                                    }),
+                              ),
+                            ),
+                          );
                         },
-                        aspectRatio: 3 / 4,
-                        padEnds: false,
-                        height: MediaQuery.sizeOf(context).width * 0.2,
-                        viewportFraction: 1 / 6,
-                        enlargeFactor: 0.1,
-                        enlargeStrategy: CenterPageEnlargeStrategy.zoom,
-                        enableInfiniteScroll: true,
-                        enlargeCenterPage: true)),
+                        options: CarouselOptions(
+                            onPageChanged: (index, reason) {
+                              selectedIndex.value = index;
+                            },
+                            aspectRatio: 3 / 4,
+                            padEnds: false,
+                            height: MediaQuery.sizeOf(context).width * 0.2,
+                            viewportFraction: 1 / 6,
+                            enlargeFactor: 0.1,
+                            enlargeStrategy: CenterPageEnlargeStrategy.zoom,
+                            enableInfiniteScroll: true,
+                            enlargeCenterPage: true)),
+                  ),
+                  64.h,
+                ],
               ),
-              64.h,
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
